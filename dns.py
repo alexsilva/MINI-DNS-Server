@@ -89,8 +89,8 @@ if __name__ == '__main__':
             data, addr = udps.recvfrom(1024)
             dns = DNSResolver(udps, addr, data)
             dns.start()
-    except Exception as err:
-        print(err)
+    except KeyboardInterrupt:
+        pass
     finally:
         udps.close()
         input('Press enter...')
