@@ -72,9 +72,11 @@ class DNSResolver(Thread):
     def run(self):
         print("Request from: ", ':'.join([str(i) for i in self.addr]))
 
-        dns_query = DNSQuery(self.data)
-        self.udps.sendto(dns_query.response(), self.addr)
-
+        try:
+            dns_query = DNSQuery(self.data)
+            self.udps.sendto(dns_query.response(), self.addr)
+        except OSError:
+            return  # closed by client
         print('Response: {0} -> {1}'.format(dns_query.domain, dns_query.ip))
 
 
@@ -86,7 +88,10 @@ if __name__ == '__main__':
 
     try:
         while True:
-            data, addr = udps.recvfrom(1024)
+            try:
+                data, addr = udps.recvfrom(1024)
+            except ConnectionResetError:
+                continue  # closed by client
             dns = DNSResolver(udps, addr, data)
             dns.start()
     except KeyboardInterrupt:
