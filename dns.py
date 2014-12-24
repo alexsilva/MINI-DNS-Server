@@ -11,7 +11,7 @@ import select
 import ipaddress
 
 from storage import Storage, Address
-import lookup
+from lookup import DNSLookup
 
 
 class DNSQuery(object):
@@ -21,6 +21,7 @@ class DNSQuery(object):
         self.storage = storage
         self.data = data
         self.address = Address()
+        self.dnsLookup = DNSLookup(data)
         self._domain = None
 
     @property
@@ -43,7 +44,7 @@ class DNSQuery(object):
             self.address = self.storage.find(self.domain)
 
         if not self.address.is_valid():
-            self.address.ip = lookup.get_ip(self.data)
+            self.address.ip = self.dnsLookup.ip
 
             with DNSQuery.lock:
                 self.storage.add(self.domain, self.address.ip)
@@ -62,7 +63,7 @@ class DNSQuery(object):
             packet += b'\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04'  # Response type, ttl and resource data length -> 4 bytes
             packet += ipaddress.IPv4Address(self.address.ip).packed  # 4bytes of IP
         else:
-            packet = lookup.get_raw(self.data)
+            packet = self.dnsLookup.raw_ip
             print('DNS Server fatal failed...')
         return packet
 

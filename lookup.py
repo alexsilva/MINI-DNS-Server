@@ -5,20 +5,23 @@ __author__ = 'alex'
 dns_server = ('8.8.8.8', 53)
 
 
-def get_ip(packs):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+class DNSLookup(object):
 
-    sock.sendto(packs, dns_server)
-    data, dns = sock.recvfrom(1024)
+    def __init__(self, packs):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.packs = packs
 
-    return '.'.join([str(i) for i in data][-4:])
+    @property
+    def ip(self):
+        data = self.resolve()
+        return '.'.join([str(i) for i in data][-4:])
 
+    @property
+    def raw_ip(self):
+        return self.resolve()
 
-def get_raw(packs):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    sock.sendto(packs, dns_server)
-    data, dns = sock.recvfrom(1024)
-
-    return data
+    def resolve(self):
+        self.sock.sendto(self.packs, dns_server)
+        data, dns = self.sock.recvfrom(1024)
+        return data
 
