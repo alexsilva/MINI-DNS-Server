@@ -94,13 +94,12 @@ class DNSServer(object):
         self.storage = Storage()
         self.storage.create_tables()
 
-        self.udps = None
+        self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def __getattr__(self, item):
         return getattr(self.udps, item)
 
     def start(self):
-        self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udps.bind((self.loc, self.port))
 
     def loop(self, timeout=15):
