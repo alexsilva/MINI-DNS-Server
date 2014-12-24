@@ -49,11 +49,10 @@ class DNSQuery(object):
                 self.storage.add(self.domain, self.address.ip)
         else:
             print('In cache {0!s}'.format(self.address))
-        return self
+        return self.address
 
     def response(self):
-        self.lookup()
-        if self.address.is_valid():
+        if self.lookup().is_valid():
             packet = self.data[:2] + b"\x81\x80"
             packet += self.data[4:6] + self.data[4:6] + b'\x00\x00\x00\x00'  # Questions and Answers Counts
 
