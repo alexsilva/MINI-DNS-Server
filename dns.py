@@ -11,17 +11,17 @@ import select
 import ipaddress
 
 from storage import Storage, Address
-from lookup import DNSLookup
+from lookup import DNSLookup, DNSRating
 
 
 class DNSQuery(object):
     lock = RLock()
 
-    def __init__(self, data, storage):
+    def __init__(self, data, storage, dnsrating):
         self.storage = storage
         self.data = data
         self.address = Address()
-        self.dnsLookup = DNSLookup(data)
+        self.dnsLookup = DNSLookup(data, dnsrating)
         self._domain = None
 
     @property
@@ -75,10 +75,13 @@ class DNSResolver(Thread):
         self.addr = addr
         self.data = data
 
+    def __getattr__(self, item):
+        return getattr(self.server, item)
+
     def run(self):
         print("Request: {0!s}".format(':'.join([str(i) for i in self.addr])))
         try:
-            query = DNSQuery(self.data, self.server.storage)
+            query = DNSQuery(self.data, self.storage, self.dnsRaking)
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
@@ -91,6 +94,7 @@ class DNSServer(object):
         self.port = port
 
         self.storage = Storage()
+        self.dnsRaking = DNSRating()
         self.storage.create_tables()
 
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
