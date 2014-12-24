@@ -98,10 +98,8 @@ class DNSServer(object):
     def __getattr__(self, item):
         return getattr(self.udps, item)
 
-    def start(self):
+    def start(self, timeout=15):
         self.udps.bind((self.loc, self.port))
-
-    def loop(self, timeout=15):
         try:
             while True:
                 # noinspection PyBroadException
@@ -125,11 +123,8 @@ class DNSServer(object):
 
 def main():
     server = DNSServer()
-    server.start()
-
     print('MINI - DNS Server, Listen at: {0!s}'.format(server))
-
-    server.loop()
+    server.start()
 
 
 if __name__ == '__main__':
