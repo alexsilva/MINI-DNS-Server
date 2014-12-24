@@ -36,7 +36,6 @@ class Storage(object):
 
     def create_tables(self):
         cur = self.conn.cursor()
-        self.cleanup(cur)
 
         # Create table
         cur.execute('''CREATE TABLE IF NOT EXISTS IP (domain text, ip text, expiration real)''')
@@ -58,6 +57,7 @@ class Storage(object):
 
     def add(self, domain, ip):
         cur = self.conn.cursor()
+        self.cleanup(cur)
 
         cur.execute('''INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?)''', (
             domain, ip, time.time() + self.expiration))
