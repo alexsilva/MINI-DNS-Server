@@ -4,15 +4,18 @@ import time
 __author__ = 'alex'
 
 
-class IP(object):
+class Address(object):
 
-    def __init__(self, domain=None, address=None, expiration=0.0):
+    def __init__(self, domain=None, ip=None, expiration=0.0):
         self.domain = domain
-        self.address = address
+        self.ip = ip
         self.expiration = expiration
 
-    def valid(self):
-        return bool(self.domain and self.address)
+    def is_valid(self):
+        return bool(self.domain and self.ip)
+
+    def __str__(self):
+        return '[{self.domain}] {self.ip}'.format(self=self)
 
 
 class Storage(object):
@@ -22,7 +25,7 @@ class Storage(object):
     expiration = 300
 
     def __init__(self, name=None, expiration=0):
-        self.conn = sqlite3.connect(name or self.name)
+        self.conn = sqlite3.connect(name or self.name, check_same_thread=False)
         self.expiration = expiration or self.__class__.expiration
 
     def create_tables(self):
@@ -43,7 +46,7 @@ class Storage(object):
 
         cur.close()
 
-        return IP(*(args or ()))
+        return Address(*(args or ()))
 
     def add(self, domain, ip):
         cur = self.conn.cursor()

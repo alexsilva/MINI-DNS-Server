@@ -4,49 +4,56 @@ Reference:
 Edited:
     Alex Sandro
 """
-import ipaddress
 import socket
 from threading import Thread, RLock
+import select
+
+import ipaddress
+
+from storage import Storage, Address
 import lookup
 
 
 class DNSQuery(object):
-    IP_CACHE = {}
     lock = RLock()
 
-    def __init__(self, data):
+    def __init__(self, data, storage):
+        self.storage = storage
         self.data = data
+        self.address = Address()
+        self._domain = None
 
-        _type = (data[2] >> 3) & 15  # Opcode bits
+    @property
+    def domain(self):
+        if not self._domain:
+            domain = []
+            code = (self.data[2] >> 3) & 15  # Opcode bits
+            if code == 0:  # Standard query
+                ini = 12
+                lon = self.data[ini]
+                while lon != 0:
+                    domain.append(str(self.data[ini + 1:ini + lon + 1], 'utf-8'))
+                    ini += lon + 1
+                    lon = self.data[ini]
+            self._domain = '.'.join(domain)
+        return self._domain
 
-        self.domain = self.get_domain(_type, data)
-        self.ip = ''
+    def lookup(self):
+        with DNSQuery.lock:
+            self.address = self.storage.find(self.domain)
 
-    @staticmethod
-    def get_domain(_type, data):
-        domain = []
-        if _type == 0:  # Standard query
-            ini = 12
-            lon = data[ini]
-            while lon != 0:
-                domain.append(str(data[ini + 1:ini + lon + 1], 'utf-8'))
-                ini += lon + 1
-                lon = data[ini]
-        return '.'.join(domain)
+        if not self.address.is_valid():
+            self.address.ip = lookup.get_ip(self.data)
 
-    def look_up_ip(self):
-        if not self.domain in DNSQuery.IP_CACHE:
-            ip_addr = lookup.get_ip(self.data)
             with DNSQuery.lock:
-                DNSQuery.IP_CACHE[self.domain] = ip_addr
+                self.storage.add(self.domain, self.address.ip)
         else:
-            print('In cache', self.domain, DNSQuery.IP_CACHE[self.domain])
-        return DNSQuery.IP_CACHE[self.domain]
+            print('In cache {0!s}'.format(self.address))
+        return self
 
     def response(self):
-        self.ip = self.look_up_ip()
-
-        if self.domain and self.ip:
+        self.lookup()
+        if self.address.is_valid():
             packet = self.data[:2] + b"\x81\x80"
             packet += self.data[4:6] + self.data[4:6] + b'\x00\x00\x00\x00'  # Questions and Answers Counts
 
@@ -54,7 +61,7 @@ class DNSQuery(object):
             packet += b'\xc0\x0c'  # Pointer to domain name
 
             packet += b'\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04'  # Response type, ttl and resource data length -> 4 bytes
-            packet += ipaddress.IPv4Address(self.ip).packed  # 4bytes of IP
+            packet += ipaddress.IPv4Address(self.address.ip).packed  # 4bytes of IP
         else:
             packet = lookup.get_raw(self.data)
             print('DNS Server fatal failed...')
@@ -62,40 +69,65 @@ class DNSQuery(object):
 
 
 class DNSResolver(Thread):
-
-    def __init__(self, udps, addr, data):
+    def __init__(self, server, data, addr):
         super(DNSResolver, self).__init__()
-        self.udps = udps
+        self.server = server
         self.addr = addr
         self.data = data
 
     def run(self):
-        print("Request from: ", ':'.join([str(i) for i in self.addr]))
-
+        print("Request: ", ':'.join([str(i) for i in self.addr]))
         try:
-            dns_query = DNSQuery(self.data)
-            self.udps.sendto(dns_query.response(), self.addr)
+            query = DNSQuery(self.data, self.server.storage)
+            self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
-        print('Response: {0} -> {1}'.format(dns_query.domain, dns_query.ip))
+        print('Response: {0!s}'.format(query.address))
+
+
+class DNSServer(object):
+    def __init__(self, loc='127.0.0.1', port=53):
+        self.loc = loc
+        self.port = port
+
+        self.storage = Storage()
+        self.storage.create_tables()
+
+        self.udps = None
+
+    def __getattr__(self, item):
+        return getattr(self.udps, item)
+
+    def start(self):
+        self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udps.bind((self.loc, self.port))
+
+    def loop(self, timeout=15):
+        try:
+            while True:
+                # noinspection PyBroadException
+                try:
+                    rlist, wlist, xlist = select.select([self.udps], [], [], timeout)
+                    if rlist:
+                        dns = DNSResolver(self, *rlist[0].recvfrom(1024))
+                        dns.start()
+                except Exception as err:
+                    print(err)
+                    continue  # closed by client
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.udps.close()
+            input('Press enter...')
+
+    def __str__(self):
+        return '{self.loc}:{self.port}'.format(self=self)
 
 
 if __name__ == '__main__':
-    print('MINI - DNS Server, Listen at: [localhost] 127.0.0.1')
+    server = DNSServer()
+    server.start()
 
-    udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udps.bind(('127.0.0.1', 53))
+    print('MINI - DNS Server, Listen at: {0!s}'.format(server))
 
-    try:
-        while True:
-            try:
-                data, addr = udps.recvfrom(1024)
-            except ConnectionResetError:
-                continue  # closed by client
-            dns = DNSResolver(udps, addr, data)
-            dns.start()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        udps.close()
-        input('Press enter...')
+    server.loop()
