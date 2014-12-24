@@ -9,6 +9,7 @@ from threading import Thread, RLock
 import select
 
 import ipaddress
+import sys
 
 from storage import Storage, Address
 from lookup import DNSLookup
@@ -124,10 +125,14 @@ class DNSServer(object):
         return '{self.loc}:{self.port}'.format(self=self)
 
 
-if __name__ == '__main__':
+def main():
     server = DNSServer()
     server.start()
 
     print('MINI - DNS Server, Listen at: {0!s}'.format(server))
 
     server.loop()
+
+
+if __name__ == '__main__':
+    main()
