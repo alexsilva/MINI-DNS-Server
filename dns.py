@@ -9,7 +9,6 @@ from threading import Thread, RLock
 import select
 
 import ipaddress
-import sys
 
 from storage import Storage, Address
 from lookup import DNSLookup
