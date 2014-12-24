@@ -75,7 +75,7 @@ class DNSResolver(Thread):
         self.data = data
 
     def run(self):
-        print("Request: ", ':'.join([str(i) for i in self.addr]))
+        print("Request: {0!s}".format(':'.join([str(i) for i in self.addr])))
         try:
             query = DNSQuery(self.data, self.server.storage)
             self.server.sendto(query.response(), self.addr)
