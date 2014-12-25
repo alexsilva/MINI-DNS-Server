@@ -74,6 +74,11 @@ class DNSRating(object):
             cur.close()
 
 
+class DNSLookupException(Exception):
+    """ Caused on failed lookup """
+    pass
+
+
 class DNSLookup(object):
     PORT = 53
 
@@ -106,4 +111,5 @@ class DNSLookup(object):
             except:
                 self.dnsrating.update(ip, 5.0)
             index += 1
+        raise DNSLookupException('DNSLookup - IP not found!')
 

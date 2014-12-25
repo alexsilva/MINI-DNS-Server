@@ -11,7 +11,7 @@ import select
 import ipaddress
 
 from storage import Storage, Address
-from lookup import DNSLookup, DNSRating
+from lookup import DNSLookup, DNSRating, DNSLookupException
 
 
 class DNSQuery(object):
@@ -40,13 +40,16 @@ class DNSQuery(object):
 
     def lookup(self):
         self.address = self.storage.find(self.domain)
-
         if not self.address.is_valid():
-            self.address.ip = self.dnsLookup.ip
-            self.address.domain = self.domain
-            self.address.expiration = 0.0
-
-            self.storage.add(self.domain, self.address.ip)
+            try:
+                self.address.ip = self.dnsLookup.ip
+                self.address.domain = self.domain
+            except DNSLookupException:
+                self.address.domain = self.address.ip = None
+            else:
+                self.storage.add(self.address.domain, self.address.ip)
+            finally:
+                self.address.expiration = 0.0
         else:
             print('In cache {0!s}'.format(self.address))
         return self.address
