@@ -42,10 +42,10 @@ class DNSQuery(object):
         self.address = self.storage.find(self.domain)
         if not self.address.is_valid():
             try:
-                self.address.ip = self.dnsLookup.ip
                 self.address.domain = self.domain
+                self.address.ip = self.dnsLookup.ip
             except DNSLookupException:
-                self.address.domain = self.address.ip = None
+                self.address.ip = None
             else:
                 self.storage.add(self.address.domain, self.address.ip)
             finally:
