@@ -123,6 +123,7 @@ class DNSServer(object):
 
 
 def main():
+    socket.setdefaulttimeout(30.0)
     server = DNSServer()
     print('MINI - DNS Server, Listen at: {0!s}'.format(server))
     server.start()
