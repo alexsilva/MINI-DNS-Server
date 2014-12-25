@@ -80,7 +80,7 @@ class DNSResolver(Thread):
     def run(self):
         print("Request: {0!s}".format(':'.join([str(i) for i in self.addr])))
         try:
-            query = DNSQuery(self.data, self.storage, self.dnsRaking)
+            query = DNSQuery(self.data, self.storage, self.dnsrating)
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
@@ -93,7 +93,7 @@ class DNSServer(object):
         self.port = port
 
         self.storage = Storage()
-        self.dnsRaking = DNSRating()
+        self.dnsrating = DNSRating()
         self.storage.create_tables()
 
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
