@@ -64,7 +64,6 @@ class DNSQuery(object):
             packet += ipaddress.IPv4Address(self.address.ip).packed  # 4bytes of IP
         else:
             packet = self.dnsLookup.raw_ip
-            print('DNS Server fatal failed...')
         return packet
 
 
@@ -104,22 +103,20 @@ class DNSServer(object):
 
     def start(self, timeout=15):
         self.udps.bind((self.loc, self.port))
-        try:
-            while True:
-                # noinspection PyBroadException
-                try:
-                    rlist, wlist, xlist = select.select([self.udps], [], [], timeout)
-                    if rlist:
-                        dns = DNSResolver(self, *rlist[0].recvfrom(1024))
-                        dns.start()
-                except Exception as err:
-                    print(err)
-                    continue  # closed by client
-        except KeyboardInterrupt:
-            pass
-        finally:
-            self.udps.close()
-            input('Press enter...')
+        while True:
+            # noinspection PyBroadException
+            try:
+                rlist, wlist, xlist = select.select([self.udps], [], [], timeout)
+                if rlist:
+                    dns = DNSResolver(self, *rlist[0].recvfrom(1024))
+                    dns.start()
+            except KeyboardInterrupt:
+                break
+            except Exception as err:
+                print(err)
+                continue  # closed by client
+        self.udps.close()
+        print('Server stopped...')
 
     def __str__(self):
         return '{self.loc}:{self.port}'.format(self=self)
