@@ -50,8 +50,6 @@ class DNSQuery(object):
                 self.storage.add(self.address.domain, self.address.ip)
             finally:
                 self.address.expiration = 0.0
-        else:
-            print('In cache {0!s}'.format(self.address))
         return self.address
 
     def response(self):
@@ -86,7 +84,9 @@ class DNSResolver(Thread):
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
-        print('Response: {0!s}'.format(query.address))
+        print('Response[cache:{0!s}] {1!s}'.format(
+            'yes' if query.address.is_valid() else 'no',
+            query.address))
 
 
 class DNSServer(object):
