@@ -92,10 +92,18 @@ class DNSLookup(object):
         return self.resolve()
 
     def resolve(self):
-        before = time.time()
-        ip = self.dnsrating.best
-        self.sock.sendto(self.packs, (ip, self.PORT))
-        data, dns = self.sock.recvfrom(1024)
-        self.dnsrating.update(ip, time.time() - before)
-        return data
+        index = 1
+        while index < 5:
+            ip = self.dnsrating.best
+            # noinspection PyBroadException
+            try:
+                before = time.time()
+                self.sock.sendto(self.packs, (ip, self.PORT))
+                data, dns = self.sock.recvfrom(1024)
+                after = time.time()
+                self.dnsrating.update(ip, after - before)
+                return data
+            except:
+                self.dnsrating.update(ip, 5.0)
+            index += 1
 
