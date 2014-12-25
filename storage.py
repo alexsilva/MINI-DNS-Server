@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 import time
 
 __author__ = 'alex'
@@ -22,6 +23,7 @@ class Address(object):
 
 
 class Storage(object):
+    lock = threading.RLock()
 
     name = 'iptables.sqlite'
 
@@ -44,23 +46,24 @@ class Storage(object):
         cur.close()
 
     def find(self, domain):
-        cur = self.conn.cursor()
-        self.cleanup(cur)
+        with Storage.lock:
+            cur = self.conn.cursor()
+            self.cleanup(cur)
 
-        cur.execute('''SELECT * FROM IP WHERE domain=? AND expiration>=?''', (domain, time.time()))
+            cur.execute('''SELECT * FROM IP WHERE domain=? AND expiration>=?''', (domain, time.time()))
 
-        args = cur.fetchone()
-
-        cur.close()
+            args = cur.fetchone()
+            cur.close()
 
         return Address(*(args or ()))
 
     def add(self, domain, ip):
-        cur = self.conn.cursor()
-        self.cleanup(cur)
+        with Storage.lock:
+            cur = self.conn.cursor()
+            self.cleanup(cur)
 
-        cur.execute('''INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?)''', (
-            domain, ip, time.time() + self.expiration))
+            cur.execute('''INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?)''', (
+                domain, ip, time.time() + self.expiration))
 
-        self.conn.commit()
-        cur.close()
+            self.conn.commit()
+            cur.close()

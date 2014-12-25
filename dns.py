@@ -5,7 +5,7 @@ Edited:
     Alex Sandro
 """
 import socket
-from threading import Thread, RLock
+from threading import Thread
 import select
 
 import ipaddress
@@ -15,7 +15,6 @@ from lookup import DNSLookup, DNSRating
 
 
 class DNSQuery(object):
-    lock = RLock()
 
     def __init__(self, data, storage, dnsrating):
         self.storage = storage
@@ -40,14 +39,14 @@ class DNSQuery(object):
         return self._domain
 
     def lookup(self):
-        with DNSQuery.lock:
-            self.address = self.storage.find(self.domain)
+        self.address = self.storage.find(self.domain)
 
         if not self.address.is_valid():
             self.address.ip = self.dnsLookup.ip
+            self.address.domain = self.domain
+            self.address.expiration = 0.0
 
-            with DNSQuery.lock:
-                self.storage.add(self.domain, self.address.ip)
+            self.storage.add(self.domain, self.address.ip)
         else:
             print('In cache {0!s}'.format(self.address))
         return self.address
