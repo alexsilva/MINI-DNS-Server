@@ -4,6 +4,7 @@ Reference:
 Edited:
     Alex Sandro
 """
+import argparse
 import socket
 from threading import Thread
 import select
@@ -90,11 +91,11 @@ class DNSResolver(Thread):
 
 
 class DNSServer(object):
-    def __init__(self, loc='127.0.0.1', port=53):
+    def __init__(self, loc='127.0.0.1', port=53, **kwargs):
         self.loc = loc
         self.port = port
 
-        self.storage = Storage()
+        self.storage = Storage(expiration=kwargs.pop('expiration', 0))
         self.dnsrating = DNSRating()
 
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -124,8 +125,17 @@ class DNSServer(object):
 
 
 def main():
-    socket.setdefaulttimeout(30.0)
-    server = DNSServer()
+    parser = argparse.ArgumentParser(description='General settings of server and storage.')
+    parser.add_argument('--socket-timeout', dest='socket_timeout', type=float, default=30.0,
+                        help='Set the default timeout in floating seconds for new socket objects.')
+    parser.add_argument('--loc', default='127.0.0.1', help='Ip address of the server (default 127.0.0.1).')
+    parser.add_argument('--port', default=53, type=int, help='Sets communication port dns server (default 53).')
+    parser.add_argument('--storage-expiration', default=300, type=int, dest='expiration',
+                        help='Time in seconds in which new IPs addresses are stored in the database (default 300s).')
+    args = parser.parse_args()
+
+    socket.setdefaulttimeout(args.socket_timeout)
+    server = DNSServer(loc=args.loc, port=args.port, expiration=args.expiration)
     print('MINI - DNS Server, Listen at: {0!s}'.format(server))
     server.start()
 
