@@ -32,11 +32,6 @@ class DNSRating(object):
 
     filepath = os.path.join(os.getcwd(), 'dsnrating.sqlite')
 
-    SQL = '''
-        INSERT OR REPLACE INTO DNS (ip, rating)
-            VALUES (COALESCE((SELECT ip FROM DNS WHERE ip = "{ip}"), "{ip}"), "{rating}")
-        '''
-
     lock = threading.RLock()
 
     version = 0
@@ -52,8 +47,9 @@ class DNSRating(object):
         # Create table
         cur.execute("CREATE TABLE IF NOT EXISTS DNS (ip text, rating real);")
 
-        for ip in self.DNS:
-            cur.execute(self.SQL.format(ip=ip, rating=0.0))
+        if not self.best:  # empty
+            for ip in self.DNS:
+                cur.execute("INSERT INTO DNS (ip, rating) VALUES(?, ?)", (ip, 0.0))
 
         self.conn.commit()
         cur.close()
@@ -64,19 +60,21 @@ class DNSRating(object):
             cur = self.conn.cursor()
 
             # Create table
-            cur.execute("SELECT ip FROM DNS ORDER BY rating ASC")
-            best = cur.fetchone()
+            cur.execute("SELECT ip FROM DNS ORDER BY rating ASC LIMIT 2;")
+            ip = cur.fetchone()
 
-            self.conn.commit()
             cur.close()
-        return best[0]
+        return ip[0] if ip else None
 
     def update(self, ip, rating):
         with DNSRating.lock:
             cur = self.conn.cursor()
-            cur.execute(self.SQL.format(ip=ip, rating=rating))
+            cur.execute("UPDATE DNS SET rating=? WHERE ip=?;", (rating, ip))
             self.conn.commit()
             cur.close()
+
+    def __len__(self):
+        return len(self.DNS)
 
 
 class DNSLookupException(Exception):
@@ -103,7 +101,7 @@ class DNSLookup(object):
 
     def resolve(self):
         index = 1
-        while index < 5:
+        while index < len(self.dnsrating):
             ip = self.dnsrating.best
             # noinspection PyBroadException
             try:
@@ -114,7 +112,7 @@ class DNSLookup(object):
                 self.dnsrating.update(ip, after - before)
                 return data
             except:
-                self.dnsrating.update(ip, 5.0)
+                self.dnsrating.update(ip, 1.0)  # bet rate
             index += 1
         raise DNSLookupException('DNSLookup - IP not found!')
 
