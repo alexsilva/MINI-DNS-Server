@@ -32,11 +32,12 @@ class Storage(object):
     def __init__(self, name=None, expiration=0):
         self.conn = sqlite3.connect(name or self.name, check_same_thread=False)
         self.expiration = expiration or self.__class__.expiration
+        self._create_tables()
 
     def cleanup(self, cur):
         cur.execute('''DELETE FROM IP WHERE expiration<?''', (time.time() - self.expiration,))
 
-    def create_tables(self):
+    def _create_tables(self):
         cur = self.conn.cursor()
 
         # Create table

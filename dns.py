@@ -96,7 +96,6 @@ class DNSServer(object):
 
         self.storage = Storage()
         self.dnsrating = DNSRating()
-        self.storage.create_tables()
 
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
