@@ -1,6 +1,7 @@
 import sqlite3
 import threading
 import time
+import re
 
 __author__ = 'alex'
 
@@ -29,9 +30,10 @@ class Storage(object):
 
     expiration = 300
 
-    def __init__(self, name=None, expiration=0):
+    def __init__(self, name=None, expiration=0, skip_ip_patterns=[]):
         self.conn = sqlite3.connect(name or self.name, check_same_thread=False)
         self.expiration = expiration or self.__class__.expiration
+        self.skip_ip_patterns = [re.compile(p) for p in skip_ip_patterns]
         self._create_tables()
 
     def cleanup(self, cur):
@@ -59,6 +61,9 @@ class Storage(object):
         return Address(*(args or ()))
 
     def add(self, domain, ip):
+        for pattern in self.skip_ip_patterns:
+            if pattern.match(ip):
+                return
         with Storage.lock:
             cur = self.conn.cursor()
             self.cleanup(cur)
