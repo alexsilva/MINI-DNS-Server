@@ -1,7 +1,9 @@
+import os
 import socket
 import sqlite3
 import threading
 import time
+import utils
 
 __author__ = 'alex'
 
@@ -28,7 +30,7 @@ class DNSRating(object):
         '109.69.8.51'  # puntCAT13
     ]
 
-    name = 'dsnraking.sqlite'
+    filepath = os.path.join(os.getcwd(), 'dsnrating.sqlite')
 
     SQL = '''
         INSERT OR REPLACE INTO DNS (ip, rating)
@@ -37,8 +39,11 @@ class DNSRating(object):
 
     lock = threading.RLock()
 
-    def __init__(self, name=None):
-        self.conn = sqlite3.connect(name or self.name, check_same_thread=False)
+    version = 0
+
+    def __init__(self, filepath=None):
+        self.conn = sqlite3.connect(utils.versioned_filepath(filepath or self.filepath, self.version),
+                                    check_same_thread=False)
         self._create_tables()
 
     def _create_tables(self):
