@@ -133,7 +133,7 @@ def main():
     parser.add_argument('--port', default=53, type=int, help='Sets communication port dns server (default 53).')
     parser.add_argument('--storage-expiration', default=300, type=int, dest='expiration',
                         help='Time in seconds in which new IPs addresses are stored in the database (default 300s).')
-    parser.add_argument('--storage-skip-ip-patterns', nargs="*", dest='skip_ip_patterns',
+    parser.add_argument('--storage-skip-ip-patterns', default=[], nargs="*", dest='skip_ip_patterns',
                         help='Ignores the ips storage data by regular expressions.')
     args = parser.parse_args()
 
