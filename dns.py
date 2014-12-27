@@ -127,11 +127,11 @@ class DNSServer(object):
 
 def main():
     parser = argparse.ArgumentParser(description='General settings of server and storage.')
-    parser.add_argument('--socket-timeout', dest='socket_timeout', type=float, default=30.0,
+    parser.add_argument('--socket-timeout', dest='socket_timeout', type=float, default=5.0,
                         help='Set the default timeout in floating seconds for new socket objects.')
     parser.add_argument('--loc', default='127.0.0.1', help='Ip address of the server (default 127.0.0.1).')
     parser.add_argument('--port', default=53, type=int, help='Sets communication port dns server (default 53).')
-    parser.add_argument('--storage-expiration', default=300, type=int, dest='expiration',
+    parser.add_argument('--storage-expiration', default=1800, type=int, dest='expiration',
                         help='Time in seconds in which new IPs addresses are stored in the database (default 300s).')
     parser.add_argument('--storage-skip-ip-patterns', default=[], nargs="*", dest='skip_ip_patterns',
                         help='Ignores the ips storage data by regular expressions.')

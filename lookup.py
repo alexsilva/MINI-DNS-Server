@@ -112,7 +112,7 @@ class DNSLookup(object):
                 self.dnsrating.update(ip, after - before)
                 return data
             except:
-                self.dnsrating.update(ip, 1.0)  # bet rate
+                self.dnsrating.update(ip, 5.0)  # bet rate
             index += 1
         raise DNSLookupException('DNSLookup - IP not found!')
 
