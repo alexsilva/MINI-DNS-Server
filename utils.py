@@ -13,8 +13,6 @@ def versioned_filepath(filepath, version=0):
     old_filepath = filepath + str(old_version if old_version > 0 else '') + ext
     filepath = filepath + str(new_version) + ext
 
-    print(filepath, old_filepath)
-
     if old_filepath != filepath and os.path.exists(old_filepath):
         os.remove(old_filepath)
     return filepath
