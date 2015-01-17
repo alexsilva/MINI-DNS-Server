@@ -16,3 +16,8 @@ def versioned_filepath(filepath, version=0):
     if old_filepath != filepath and os.path.exists(old_filepath):
         os.remove(old_filepath)
     return filepath
+
+
+def byte_from(_bytes, _index):
+    """ :return byte from index """
+    return bytes([_bytes[_index]])

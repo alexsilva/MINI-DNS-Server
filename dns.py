@@ -13,6 +13,7 @@ import ipaddress
 
 from storage import Storage, Address
 from lookup import DNSLookup, DNSRating, DNSLookupException
+import lab3
 
 
 class DNSQuery(object):
@@ -27,42 +28,37 @@ class DNSQuery(object):
     @property
     def domain(self):
         if not self._domain:
-            domain = []
             code = (self.data[2] >> 3) & 15  # Opcode bits
             if code == 0:  # Standard query
-                ini = 12
-                lon = self.data[ini]
-                while lon != 0:
-                    domain.append(str(self.data[ini + 1:ini + lon + 1], 'utf-8'))
-                    ini += lon + 1
-                    lon = self.data[ini]
-            self._domain = '.'.join(domain)
+                self._domain = lab3.decode_name(self.data, 12)[0]
+            else:
+                raise Exception('Invalid query!')
         return self._domain
 
     def lookup(self):
         self.address = self.storage.find(self.domain)
         if not self.address.is_valid():
             try:
-                self.address.domain = self.domain
-                self.address.ip = self.dnsLookup.ip
-            except DNSLookupException:
-                self.address.ip = None
-            else:
-                self.storage.add(self.address.domain, self.address.ip)
-            finally:
-                self.address.expiration = 0.0
+                self.address = self.storage.add(self.domain, self.dnsLookup.ip)
+            except (DNSLookupException, lab3.CNAMEException):
+                pass
         return self.address
 
     def response(self):
         if self.lookup().is_valid():
-            packet = self.data[:2] + b"\x81\x80"
-            packet += self.data[4:6] + self.data[4:6] + b'\x00\x00\x00\x00'  # Questions and Answers Counts
-
-            packet += self.data[12:]  # Original Domain Name Question
-            packet += b'\xc0\x0c'  # Pointer to domain name
-
-            packet += b'\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04'  # Response type, ttl and resource data length -> 4 bytes
-            packet += ipaddress.IPv4Address(self.address.ip).packed  # 4bytes of IP
+            packet = b''.join([
+                self.data[:2] + b"\x81\x80",
+                # Questions and Answers Counts
+                self.data[4:6] + self.data[4:6] + b'\x00\x00\x00\x00',
+                # Original Domain Name Question
+                self.data[12:],
+                # Pointer to domain name
+                b'\xc0\x0c',
+                # Response type, ttl and resource data length -> 4 bytes
+                b'\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04',
+                # 4bytes of IP
+                ipaddress.IPv4Address(self.address.ip).packed
+            ])
         else:
             packet = self.dnsLookup.raw_ip
         return packet

@@ -4,6 +4,7 @@ import sqlite3
 import threading
 import time
 import utils
+import lab3
 
 __author__ = 'alex'
 
@@ -11,8 +12,8 @@ __author__ = 'alex'
 class DNSRating(object):
     """ benchmark of dns """
     DNS = [
-        '209.244.0.3', '209.244.0.4',  # Level31
         '8.8.8.8', '8.8.4.4',  # Google2
+        '209.244.0.3', '209.244.0.4',  # Level31
         '84.200.69.80', '84.200.70.40',  # DNS.WATCH3
         '8.26.56.26', '8.20.247.20',  # Comodo Secure DNS
         '208.67.222.222', '208.67.220.220',  # OpenDNS Home4
@@ -92,14 +93,10 @@ class DNSLookup(object):
 
     @property
     def ip(self):
-        data = self.resolve()
-        return '.'.join([str(i) for i in data][-4:])
+        return lab3.decode_mes([self.raw_ip])[0][0]
 
     @property
     def raw_ip(self):
-        return self.resolve()
-
-    def resolve(self):
         index = 1
         while index < len(self.dnsrating):
             ip = self.dnsrating.best
@@ -108,11 +105,12 @@ class DNSLookup(object):
                 before = time.time()
                 self.sock.sendto(self.packs, (ip, self.PORT))
                 data, dns = self.sock.recvfrom(1024)
+                assert len(data) > 0, 'empty data'
                 after = time.time()
                 self.dnsrating.update(ip, after - before)
                 return data
             except:
-                self.dnsrating.update(ip, 5.0)  # bet rate
+                self.dnsrating.update(ip, 5.0)  # bed rate
             index += 1
-        raise DNSLookupException('DNSLookup - IP not found!')
+        raise DNSLookupException('IP not Found!')
 
