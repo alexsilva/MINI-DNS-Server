@@ -1,8 +1,10 @@
-import socket
 import sqlite3
 import threading
 import time
 import re
+
+import utils
+
 
 __author__ = 'alex'
 
@@ -13,20 +15,12 @@ class Address(object):
         self.ip = ip
         self.expiration = expiration
 
-    @staticmethod
-    def _validate_ip(ip):
-        try:
-            valid = socket.inet_aton(ip)
-        except socket.error:
-            valid = None
-        return bool(valid)
-
     @property
     def time(self):
         return self.expiration - time.time()
 
     def is_valid(self):
-        return bool(self.domain and self._validate_ip(self.ip) and self.expiration)
+        return bool(self.domain and utils.validate_ip(self.ip) and self.expiration)
 
     def __str__(self):
         domain = '-1.-1.-1.-1' if not self.domain else self.domain
@@ -70,15 +64,15 @@ class Storage(object):
 
         return Address(*(args or ()))
 
-    def add(self, domain, ip):
+    def add(self, domain, ip, expiration):
         for pattern in self.skip_ip_patterns:
             if pattern.match(ip):
-                return
+                return Address()
         with Storage.lock:
             cur = self.conn.cursor()
             self.cleanup(cur)
 
-            expiration = time.time() + self.expiration
+            expiration = time.time() + expiration  # future
             cur.execute('INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?);', (domain, ip, expiration))
 
             self.conn.commit()

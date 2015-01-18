@@ -3,8 +3,11 @@ import socket
 import sqlite3
 import threading
 import time
-import utils
+
 import dnslib
+
+import utils
+
 
 __author__ = 'alex'
 
@@ -91,18 +94,31 @@ class DNSLookup(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.dnsrating = dnsrating
         self.packs = packs
+        self._raw_ip = None
+        self._record = None
+
+    @property
+    def record(self):
+        if self._record is None:
+            self._record = dnslib.DNSRecord.parse(self.raw_ip)
+        return self._record
 
     @property
     def ip(self):
-        raw_ip = self.raw_ip
+        return str(self.record.a.rdata)  # IP
 
-        record = dnslib.DNSRecord.parse(raw_ip)
-        answer = record.a
+    @property
+    def ttl(self):
+        return float(self.record.a.ttl)  # TTL
 
-        return str(answer.rdata)  # IP
+    @property
+    def domain(self):
+        return str(self.record.questions[0].qname).rstrip('.')  # DOMAIN
 
     @property
     def raw_ip(self):
+        if self._raw_ip is not None:
+            return self._raw_ip
         index = 1
         while index < len(self.dnsrating):
             ip = self.dnsrating.best
@@ -110,20 +126,21 @@ class DNSLookup(object):
             try:
                 before = time.time()
                 self.sock.sendto(self.packs, (ip, self.PORT))
-                data, dns = self.sock.recvfrom(1024)
+                self._raw_ip, dns = self.sock.recvfrom(1024)
                 after = time.time()
 
-                assert len(data) > 0, 'empty data'
+                assert len(self._raw_ip) > 0, 'empty data'
 
                 self.dnsrating.update(ip, after - before)
-
-                record = dnslib.DNSRecord.parse(data)
+                record = dnslib.DNSRecord.parse(self._raw_ip)
                 answer = record.a
 
                 if answer.rtype == self.CNAME:
-                    record = dnslib.DNSRecord.question(str(answer.rdata))
+                    record = dnslib.DNSRecord.question(str(answer.rdata).rstrip('.'))
                     return DNSLookup(record.pack(), self.dnsrating).raw_ip
-                return data
+
+                assert utils.validate_ip(str(answer.rdata))
+                return self._raw_ip
             except Exception:
                 self.dnsrating.update(ip, 5.0)  # bed rate
             index += 1

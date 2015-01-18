@@ -1,4 +1,5 @@
 import os
+import socket
 
 __author__ = 'alex'
 
@@ -16,6 +17,14 @@ def versioned_filepath(filepath, version=0):
     if old_filepath != filepath and os.path.exists(old_filepath):
         os.remove(old_filepath)
     return filepath
+
+
+def validate_ip(ip):
+    try:
+        valid = socket.inet_aton(ip)
+    except socket.error:
+        valid = None
+    return bool(valid)
 
 
 def byte_from(_bytes, _index):
