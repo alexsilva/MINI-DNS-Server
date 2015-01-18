@@ -121,9 +121,8 @@ class DNSLookup(object):
                 answer = record.a
 
                 if answer.rtype == self.CNAME:
-                    domain_alias = str(answer.rdata)
-                    print('Canonical Name Record: {0:s}'.format(domain_alias))
-                    return DNSLookup(dnslib.DNSRecord.question(domain_alias).pack(), self.dnsrating).raw_ip
+                    record = dnslib.DNSRecord.question(str(answer.rdata))
+                    return DNSLookup(record.pack(), self.dnsrating).raw_ip
                 return data
             except Exception:
                 self.dnsrating.update(ip, 5.0)  # bed rate
