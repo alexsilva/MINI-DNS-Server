@@ -4,7 +4,7 @@ import sqlite3
 import threading
 import time
 import utils
-import lab3
+import dnslib
 
 __author__ = 'alex'
 
@@ -85,6 +85,7 @@ class DNSLookupException(Exception):
 
 class DNSLookup(object):
     PORT = 53
+    CNAME = 5
 
     def __init__(self, packs, dnsrating):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -93,7 +94,12 @@ class DNSLookup(object):
 
     @property
     def ip(self):
-        return lab3.decode_mes([self.raw_ip])[0][0]
+        raw_ip = self.raw_ip
+
+        record = dnslib.DNSRecord.parse(raw_ip)
+        answer = record.a
+
+        return str(answer.rdata)  # IP
 
     @property
     def raw_ip(self):
@@ -105,11 +111,21 @@ class DNSLookup(object):
                 before = time.time()
                 self.sock.sendto(self.packs, (ip, self.PORT))
                 data, dns = self.sock.recvfrom(1024)
-                assert len(data) > 0, 'empty data'
                 after = time.time()
+
+                assert len(data) > 0, 'empty data'
+
                 self.dnsrating.update(ip, after - before)
+
+                record = dnslib.DNSRecord.parse(data)
+                answer = record.a
+
+                if answer.rtype == self.CNAME:
+                    domain_alias = str(answer.rdata)
+                    print('Canonical Name Record: {0:s}'.format(domain_alias))
+                    return DNSLookup(dnslib.DNSRecord.question(domain_alias).pack(), self.dnsrating).raw_ip
                 return data
-            except:
+            except Exception:
                 self.dnsrating.update(ip, 5.0)  # bed rate
             index += 1
         raise DNSLookupException('IP not Found!')

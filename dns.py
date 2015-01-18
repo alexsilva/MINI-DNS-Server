@@ -5,15 +5,13 @@ Edited:
     Alex Sandro
 """
 import argparse
-import socket
 from threading import Thread
 import select
 
-import ipaddress
-
 from storage import Storage, Address
 from lookup import DNSLookup, DNSRating, DNSLookupException
-import lab3
+import socket
+import dnslib
 
 
 class DNSQuery(object):
@@ -30,7 +28,8 @@ class DNSQuery(object):
         if not self._domain:
             code = (self.data[2] >> 3) & 15  # Opcode bits
             if code == 0:  # Standard query
-                self._domain = lab3.decode_name(self.data, 12)[0]
+                record = dnslib.DNSRecord.parse(self.data)
+                self._domain = str(record.questions[0].qname)
             else:
                 raise Exception('Invalid query!')
         return self._domain
@@ -40,7 +39,7 @@ class DNSQuery(object):
         if not self.address.is_valid():
             try:
                 self.address = self.storage.add(self.domain, self.dnsLookup.ip)
-            except (DNSLookupException, lab3.CNAMEException):
+            except DNSLookupException:
                 pass
         return self.address
 
@@ -57,7 +56,7 @@ class DNSQuery(object):
                 # Response type, ttl and resource data length -> 4 bytes
                 b'\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04',
                 # 4bytes of IP
-                ipaddress.IPv4Address(self.address.ip).packed
+                socket.inet_aton(self.address.ip)
             ])
         else:
             packet = self.dnsLookup.raw_ip
