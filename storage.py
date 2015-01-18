@@ -29,7 +29,8 @@ class Address(object):
         return bool(self.domain and self._validate_ip(self.ip) and self.expiration)
 
     def __str__(self):
-        return '[{0.ip}] {0.domain} {0.time:.2f}s'.format(self)
+        domain = '-1.-1.-1.-1' if not self.domain else self.domain
+        return '[{0.ip}] {1} {0.time:.2f}s'.format(self, domain)
 
 
 class Storage(object):
