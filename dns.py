@@ -7,15 +7,15 @@ Edited:
 import argparse
 from threading import Thread
 import select
+import socket
+
+import dnslib
 
 from storage import Storage, Address
 from lookup import DNSLookup, DNSRating, DNSLookupException
-import socket
-import dnslib
 
 
 class DNSQuery(object):
-
     def __init__(self, data, storage, dnsrating):
         self.storage = storage
         self.data = data
@@ -29,7 +29,7 @@ class DNSQuery(object):
             code = (self.data[2] >> 3) & 15  # Opcode bits
             if code == 0:  # Standard query
                 record = dnslib.DNSRecord.parse(self.data)
-                self._domain = str(record.questions[0].qname)
+                self._domain = str(record.questions[0].qname).rstrip('.')
             else:
                 raise Exception('Invalid query!')
         return self._domain
@@ -38,29 +38,24 @@ class DNSQuery(object):
         self.address = self.storage.find(self.domain)
         if not self.address.is_valid():
             try:
-                self.address = self.storage.add(self.domain, self.dnsLookup.ip)
+                self.address = self.storage.add(self.dnsLookup.domain, self.dnsLookup.ip,
+                                                self.dnsLookup.ttl)
             except DNSLookupException:
                 pass
         return self.address
 
     def response(self):
         if self.lookup().is_valid():
-            packet = b''.join([
-                self.data[:2] + b"\x81\x80",
-                # Questions and Answers Counts
-                self.data[4:6] + self.data[4:6] + b'\x00\x00\x00\x00',
-                # Original Domain Name Question
-                self.data[12:],
-                # Pointer to domain name
-                b'\xc0\x0c',
-                # Response type, ttl and resource data length -> 4 bytes
-                b'\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04',
-                # 4bytes of IP
-                socket.inet_aton(self.address.ip)
-            ])
+            record = dnslib.DNSRecord(
+                dnslib.DNSHeader(qr=1, rd=1, ra=1),
+                q=dnslib.DNSQuestion(self.domain),
+                a=dnslib.RR(self.address.domain,
+                            ttl=int(self.address.time),
+                            rdata=dnslib.A(self.address.ip)))
+            packs = record.pack()
         else:
-            packet = self.dnsLookup.raw_ip
-        return packet
+            packs = self.dnsLookup.raw_ip
+        return packs
 
 
 class DNSResolver(Thread):
