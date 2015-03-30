@@ -21,15 +21,15 @@ class DNSQuery(object):
         self.data = data
         self.address = Address()
         self.dnsLookup = DNSLookup(data, dnsrating)
-        self._domain = None
+        self._domain = self._record = None
 
     @property
     def domain(self):
         if not self._domain:
             code = (self.data[2] >> 3) & 15  # Opcode bits
             if code == 0:  # Standard query
-                record = dnslib.DNSRecord.parse(self.data)
-                self._domain = str(record.questions[0].qname).rstrip('.')
+                self._record = dnslib.DNSRecord.parse(self.data)
+                self._domain = str(self._record.questions[0].qname).rstrip('.')
             else:
                 raise Exception('Invalid query!')
         return self._domain
@@ -47,7 +47,7 @@ class DNSQuery(object):
     def response(self):
         if self.lookup().is_valid():
             record = dnslib.DNSRecord(
-                dnslib.DNSHeader(qr=1, rd=1, ra=1),
+                dnslib.DNSHeader(id=self._record.header.id, qr=1, rd=1, ra=1),
                 q=dnslib.DNSQuestion(self.domain),
                 a=dnslib.RR(self.address.domain,
                             ttl=int(self.address.time),
