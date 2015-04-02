@@ -75,9 +75,8 @@ class DNSResolver(Thread):
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
-        print('Response[cache:{0!s}] {1!s}'.format(
-            'yes' if query.address.is_valid() else 'no',
-            query.address))
+        print('Response[{0:s}] {1!s}'.format('cached' if query.address.is_valid() else 'no cache',
+                                             query.address))
 
 
 class DNSServer(object):
