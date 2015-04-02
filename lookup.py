@@ -64,11 +64,11 @@ class DNSRating(object):
             cur = self.conn.cursor()
 
             # Create table
-            cur.execute("SELECT ip FROM DNS ORDER BY rating ASC LIMIT 2;")
-            ip = cur.fetchone()
+            cur.execute("SELECT ip,rating FROM DNS ORDER BY rating ASC LIMIT 2;")
+            items = cur.fetchone()
 
             cur.close()
-        return ip[0] if ip else None
+        return items if items else []
 
     def update(self, ip, rating):
         with DNSRating.lock:
@@ -121,7 +121,10 @@ class DNSLookup(object):
             return self._raw_ip
         index = 1
         while index < len(self.dnsrating):
-            ip = self.dnsrating.best
+            dns = self.dnsrating.best
+            if not dns:
+                return dns
+            ip, old_time = dns
             # noinspection PyBroadException
             try:
                 before = time.time()
@@ -142,7 +145,7 @@ class DNSLookup(object):
                 assert utils.validate_ip(str(answer.rdata))
                 return self._raw_ip
             except Exception:
-                self.dnsrating.update(ip, 5.0)  # bed rate
+                self.dnsrating.update(ip, 5 + old_time)  # bed rate
             index += 1
         raise DNSLookupException('IP not Found!')
 
