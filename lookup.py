@@ -145,7 +145,7 @@ class DNSLookup(object):
                 assert utils.validate_ip(str(answer.rdata))
                 return self._raw_ip
             except Exception:
-                self.dnsrating.update(ip, 5 + old_time)  # bed rate
+                self.dnsrating.update(ip, old_time + 0.1)  # bed rate
             index += 1
         raise DNSLookupException('IP not Found!')
 
