@@ -26,12 +26,8 @@ class DNSQuery(object):
     @property
     def domain(self):
         if not self._domain:
-            code = (self.data[2] >> 3) & 15  # Opcode bits
-            if code == 0:  # Standard query
-                self._record = dnslib.DNSRecord.parse(self.data)
-                self._domain = str(self._record.questions[0].qname).rstrip('.')
-            else:
-                raise Exception('Invalid query!')
+            self._record = dnslib.DNSRecord.parse(self.data)
+            self._domain = str(self._record.questions[0].qname).rstrip('.')
         return self._domain
 
     def lookup(self):
