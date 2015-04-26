@@ -119,7 +119,9 @@ class DNSLookup(object):
 
     @staticmethod
     def get_ips(record):
-        return [str(rr.rdata).strip('.') for rr in record.rr]
+        data = [str(rr.rdata).strip('.') for rr in record.rr]
+        data.sort()
+        return data
 
     @property
     def record(self):
