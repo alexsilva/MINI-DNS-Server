@@ -20,7 +20,7 @@ class Address(object):
         return self.expiration - time.time()
 
     def is_valid(self):
-        return bool(self.domain and utils.validate_ip(self.ip) and self.expiration)
+        return bool(self.domain and utils.validate_ip(self.ip) and self.time > 0)
 
     def __str__(self):
         domain = '-1.-1.-1.-1' if not self.domain else self.domain
@@ -40,9 +40,9 @@ class Storage(object):
         self.skip_ip_patterns = [re.compile(p) for p in skip_ip_patterns]
         self._create_tables()
 
-    @staticmethod
-    def cleanup(cur):
-        cur.execute('DELETE FROM IP WHERE expiration<?;', (time.time(),))
+    def cleanup(self, cur, domain):
+        cur.execute('DELETE FROM IP WHERE domain=? AND expiration<?;', (domain, time.time()))
+        self.conn.commit()
 
     def _create_tables(self):
         cur = self.conn.cursor()
@@ -56,9 +56,9 @@ class Storage(object):
     def find(self, domain):
         with Storage.lock:
             cur = self.conn.cursor()
-            self.cleanup(cur)
+            self.cleanup(cur, domain)
 
-            cur.execute('SELECT * FROM IP WHERE domain=? AND expiration>=?;', (domain, time.time()))
+            cur.execute('SELECT * FROM IP WHERE domain=? AND expiration>?;', (domain, time.time()))
 
             args = cur.fetchone()
             cur.close()
@@ -71,7 +71,7 @@ class Storage(object):
                 return Address()
         with Storage.lock:
             cur = self.conn.cursor()
-            self.cleanup(cur)
+            self.cleanup(cur, domain)
 
             expiration = time.time() + expiration  # future
             cur.execute('INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?);', (domain, ip, expiration))
