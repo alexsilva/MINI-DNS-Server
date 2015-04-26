@@ -13,6 +13,7 @@ import dnslib
 
 from storage import Storage, Address
 from lookup import DNSLookup, DNSRating, DNSLookupException
+import utils
 
 
 class DNSQuery(object):
@@ -41,12 +42,18 @@ class DNSQuery(object):
 
     def response(self):
         if self.lookup().is_valid():
+            if utils.validate_ip(self.address.ip):
+                answer = dnslib.RR(self.address.domain,
+                                ttl=int(self.address.time),
+                                rdata=dnslib.A(self.address.ip))
+            else:
+                answer = dnslib.RR(self.address.domain,
+                                ttl=int(self.address.time),
+                                rdata=dnslib.NS(self.address.ip))
             record = dnslib.DNSRecord(
                 dnslib.DNSHeader(id=self._record.header.id, qr=1, rd=1, ra=1),
                 q=dnslib.DNSQuestion(self.domain),
-                a=dnslib.RR(self.address.domain,
-                            ttl=int(self.address.time),
-                            rdata=dnslib.A(self.address.ip)))
+                a=answer)
             packs = record.pack()
         else:
             packs = self.dnsLookup.raw_ip

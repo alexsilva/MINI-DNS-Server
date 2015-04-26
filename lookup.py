@@ -161,6 +161,8 @@ class DNSLookup(object):
 
                 self.dnsrating.update(best_dns.ip, new_rating if new_rating > 0.0 else 0.0)
 
+                assert any(self.get_ips(dnslib.DNSRecord.parse(self.raw_ip)))
+
                 return self._raw_ip
             except Exception:
                 self.dnsrating.update(best_dns.ip, best_dns.rating + 0.1)  # bed rate
