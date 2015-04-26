@@ -118,6 +118,10 @@ class DNSLookup(object):
         self._raw_ip = None
         self._record = None
 
+    @staticmethod
+    def get_ips(record):
+        return [str(rr.rdata) for rr in record.rr if utils.validate_ip(str(rr.rdata))]
+
     @property
     def record(self):
         if self._record is None:
@@ -126,7 +130,7 @@ class DNSLookup(object):
 
     @property
     def ip(self):
-        return str(self.record.a.rdata)  # IP
+        return self.get_ips(self.record)[0]  # IP
 
     @property
     def ttl(self):
@@ -159,13 +163,9 @@ class DNSLookup(object):
                 self.dnsrating.update(best_dns.ip, new_rating if new_rating > 0.0 else 0.0)
 
                 record = dnslib.DNSRecord.parse(self._raw_ip)
-                answer = record.a
 
-                if answer.rtype == self.CNAME:
-                    record = dnslib.DNSRecord.question(str(answer.rdata).rstrip('.'))
-                    return DNSLookup(record.pack(), self.dnsrating).raw_ip
+                assert any(self.get_ips(record))
 
-                assert utils.validate_ip(str(answer.rdata))
                 return self._raw_ip
             except Exception:
                 self.dnsrating.update(best_dns.ip, best_dns.rating + 0.1)  # bed rate
