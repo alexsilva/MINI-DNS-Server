@@ -40,8 +40,9 @@ class Storage(object):
         self.skip_ip_patterns = [re.compile(p) for p in skip_ip_patterns]
         self._create_tables()
 
-    def cleanup(self, cur):
-        cur.execute('DELETE FROM IP WHERE expiration<?;', (time.time() - self.expiration,))
+    @staticmethod
+    def cleanup(cur):
+        cur.execute('DELETE FROM IP WHERE expiration<?;', (time.time(),))
 
     def _create_tables(self):
         cur = self.conn.cursor()
