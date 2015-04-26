@@ -120,7 +120,7 @@ class DNSLookup(object):
 
     @staticmethod
     def get_ips(record):
-        return [str(rr.rdata) for rr in record.rr if utils.validate_ip(str(rr.rdata))]
+        return [str(rr.rdata).strip('.') for rr in record.rr]
 
     @property
     def record(self):
@@ -161,10 +161,6 @@ class DNSLookup(object):
                 new_rating = best_dns.rating - 0.1
 
                 self.dnsrating.update(best_dns.ip, new_rating if new_rating > 0.0 else 0.0)
-
-                record = dnslib.DNSRecord.parse(self._raw_ip)
-
-                assert any(self.get_ips(record))
 
                 return self._raw_ip
             except Exception:

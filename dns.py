@@ -34,8 +34,7 @@ class DNSQuery(object):
         self.address = self.storage.find(self.domain)
         if not self.address.is_valid():
             try:
-                self.address = self.storage.add(self.domain, self.dnsLookup.ip,
-                                                self.dnsLookup.ttl)
+                self.address = self.storage.add(self.domain, self.dnsLookup.ip, self.dnsLookup.ttl)
             except DNSLookupException:
                 pass
         return self.address
