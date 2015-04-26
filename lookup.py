@@ -109,7 +109,6 @@ class DNSLookupException(Exception):
 
 class DNSLookup(object):
     PORT = 53
-    CNAME = 5
 
     def __init__(self, packs, dnsrating):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
