@@ -38,8 +38,8 @@ class Storage(object):
         self.skip_ip_patterns = [re.compile(p) for p in skip_ip_patterns]
         self._create_tables()
 
-    def cleanup(self, cur, domain):
-        cur.execute('DELETE FROM IP WHERE domain=? AND expiration<?;', (domain, time.time()))
+    def cleanup(self, cur):
+        cur.execute('DELETE FROM IP WHERE expiration<?;', (time.time(),))
         self.conn.commit()
 
     def _create_tables(self):
@@ -54,7 +54,7 @@ class Storage(object):
     def find(self, domain):
         with Storage.lock:
             cur = self.conn.cursor()
-            self.cleanup(cur, domain)
+            self.cleanup(cur)
 
             cur.execute('SELECT * FROM IP WHERE domain=? AND expiration>?;', (domain, time.time()))
 
@@ -69,7 +69,7 @@ class Storage(object):
                 return Address()
         with Storage.lock:
             cur = self.conn.cursor()
-            self.cleanup(cur, domain)
+            self.cleanup(cur)
 
             expiration = time.time() + expiration  # future
             cur.execute('INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?);', (domain, ip, expiration))
