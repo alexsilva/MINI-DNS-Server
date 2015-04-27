@@ -3,6 +3,8 @@ import threading
 import time
 import re
 
+import utils
+
 
 __author__ = 'alex'
 
@@ -31,9 +33,11 @@ class Storage(object):
     name = 'iptables.sqlite'
 
     expiration = 300
+    version = 0
 
     def __init__(self, name=None, expiration=0, skip_ip_patterns=[]):
-        self.conn = sqlite3.connect(name or self.name, check_same_thread=False)
+        self.conn = sqlite3.connect(utils.versioned_filepath(name or self.name, self.version),
+                                    check_same_thread=False)
         self.expiration = expiration or self.expiration
         self.skip_ip_patterns = [re.compile(p) for p in skip_ip_patterns]
         self._create_tables()
@@ -46,7 +50,7 @@ class Storage(object):
         cur = self.conn.cursor()
 
         # Create table
-        cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text, ip text, expiration real);')
+        cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text PRIMARY KEY, ip text, expiration real);')
 
         self.conn.commit()
         cur.close()
@@ -72,7 +76,7 @@ class Storage(object):
             self.cleanup(cur)
 
             expiration = time.time() + expiration  # future
-            cur.execute('INSERT INTO IP(domain, ip, expiration) VALUES (?, ?, ?);', (domain, ip, expiration))
+            cur.execute('INSERT OR REPLACE INTO IP (domain, ip, expiration) VALUES (?,?,?);', (domain, ip, expiration))
 
             self.conn.commit()
             cur.close()
