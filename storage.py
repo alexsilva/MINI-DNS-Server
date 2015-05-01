@@ -16,7 +16,7 @@ class Address(object):
         return self.expiration - time.time()
 
     def is_valid(self):
-        return bool(self.domain and self.time > 0)
+        return bool(self.domain and self.ip and self.time > 0)
 
     def __str__(self):
         domain = '-1.-1.-1.-1' if not self.domain else self.domain
