@@ -38,13 +38,14 @@ class Storage(object):
         self.conn.commit()
 
     def _create_tables(self):
-        cur = self.conn.cursor()
+        with self.lock:
+            cur = self.conn.cursor()
 
-        # Create table
-        cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text PRIMARY KEY, ip text, expiration real);')
+            # Create table
+            cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text PRIMARY KEY, ip text, expiration real);')
 
-        self.conn.commit()
-        cur.close()
+            self.conn.commit()
+            cur.close()
 
     def find(self, domain):
         with self.lock:
