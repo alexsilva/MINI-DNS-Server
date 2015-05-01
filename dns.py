@@ -5,9 +5,12 @@ Edited:
     Alex Sandro
 """
 import argparse
+import os
 from threading import Thread
 import select
 import socket
+import threading
+import sqlite3
 
 import dnslib
 
@@ -81,13 +84,32 @@ class DNSResolver(Thread):
                                              query.address))
 
 
+class SharedDB(object):
+    """Database for storage ips and dns servers"""
+    lock = threading.RLock()
+    filename = 'dns_server.sqlite'
+    version = 0
+
+    def __init__(self, filepath=None):
+        if os.path.isdir(filepath):
+            filepath = os.path.join(filepath, self.filename)
+        self._conn = sqlite3.connect(utils.versioned_filepath(filepath or self.filename, self.version),
+                                     check_same_thread=False)
+
+    @property
+    def conn(self):
+        """public access"""
+        return self._conn
+
+
 class DNSServer(object):
     def __init__(self, loc='127.0.0.1', port=53, **kwargs):
         self.loc = loc
         self.port = port
 
-        self.storage = Storage(skip_ip_patterns=kwargs.pop('skip_ip_patterns', []))
-        self.dnsrating = DNSRating()
+        self.shared_db = SharedDB(kwargs.pop('db_filepath'))
+        self.storage = Storage(self.shared_db, skip_ip_patterns=kwargs.pop('skip_ip_patterns', []))
+        self.dnsrating = DNSRating(self.shared_db)
 
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -121,11 +143,14 @@ def main():
                         help='Set the default timeout in floating seconds for new socket objects.')
     parser.add_argument('--loc', default='127.0.0.1', help='Ip address of the server (default 127.0.0.1).')
     parser.add_argument('--port', default=53, type=int, help='Sets communication port dns server (default 53).')
+    parser.add_argument('--db-filepath', default=SharedDB.filename, type=str, dest='db_filepath',
+                        help='Defines the location of the given database file (full path).')
     parser.add_argument('--storage-skip-ip-patterns', default=[], nargs="*", dest='skip_ip_patterns',
                         help='Ignores the ips storage data by regular expressions.')
     args = parser.parse_args()
     socket.setdefaulttimeout(args.socket_timeout)
-    server = DNSServer(loc=args.loc, port=args.port, skip_ip_patterns=args.skip_ip_patterns)
+    server = DNSServer(loc=args.loc, port=args.port, db_filepath=args.db_filepath,
+                       skip_ip_patterns=args.skip_ip_patterns)
     print('MINI - DNS Server, Listen at: {0!s}'.format(server))
     server.start()
 

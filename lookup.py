@@ -1,11 +1,6 @@
-import os
 import socket
-import sqlite3
-import threading
 
 import dnslib
-
-import utils
 
 
 __author__ = 'alex'
@@ -55,33 +50,30 @@ class DNSRating(object):
         '109.69.8.51'  # puntCAT13
     ]
 
-    filepath = os.path.join(os.getcwd(), 'dsnrating.sqlite')
-
-    lock = threading.RLock()
-
-    version = 0
-
-    def __init__(self, filepath=None):
-        self.conn = sqlite3.connect(utils.versioned_filepath(filepath or self.filepath, self.version),
-                                    check_same_thread=False)
+    def __init__(self, db):
+        self.db = db
         self._create_tables()
 
+    def __getattr__(self, name):
+        return getattr(self.db, name)  # db alias
+
     def _create_tables(self):
-        cur = self.conn.cursor()
+        with self.lock:
+            cur = self.conn.cursor()
 
-        # Create table
-        cur.execute("CREATE TABLE IF NOT EXISTS DNS (ip text, rating real);")
+            # Create table
+            cur.execute("CREATE TABLE IF NOT EXISTS DNS (ip text, rating real);")
 
-        if not bool(self.best):  # empty
-            for ip in self.DNS:
-                cur.execute("INSERT INTO DNS (ip, rating) VALUES(?, ?)", (ip, 0.0))
+            if not bool(self.best):  # empty
+                for ip in self.DNS:
+                    cur.execute("INSERT INTO DNS (ip, rating) VALUES(?, ?)", (ip, 0.0))
 
-        self.conn.commit()
-        cur.close()
+            self.conn.commit()
+            cur.close()
 
     @property
     def best(self):
-        with DNSRating.lock:
+        with self.lock:
             cur = self.conn.cursor()
 
             # Create table
@@ -92,7 +84,7 @@ class DNSRating(object):
         return DNS(*items) if items else DNS()
 
     def update(self, ip, rating):
-        with DNSRating.lock:
+        with self.lock:
             cur = self.conn.cursor()
             cur.execute("UPDATE DNS SET rating=? WHERE ip=?;", (rating, ip))
             self.conn.commit()
