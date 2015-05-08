@@ -30,7 +30,7 @@ class Address(object):
         return bool(self.domain and self.ip and self.time > 0)
 
     def __str__(self):
-        return '[{0.ip}] {0.domain} {0.time:.2f}s'.format(self)
+        return '[{0.ip}] {0.domain} {0.time}s'.format(self)
 
 
 class MultiAddress(Address):
