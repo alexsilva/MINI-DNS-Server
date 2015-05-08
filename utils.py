@@ -1,5 +1,5 @@
 import os
-import socket
+import ipaddress
 
 __author__ = 'alex'
 
@@ -19,10 +19,10 @@ def versioned_filepath(filepath, version=0):
     return filepath
 
 
-def validate_ip(ip):
+def validate_ip(address):
     try:
-        valid = socket.inet_aton(ip)
-    except socket.error:
+        valid = ipaddress.ip_address(address)
+    except ValueError:
         valid = None
     return bool(valid)
 

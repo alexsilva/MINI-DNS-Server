@@ -3,6 +3,8 @@ import re
 
 import dnslib
 
+import utils
+
 
 __author__ = 'alex'
 
@@ -37,9 +39,7 @@ class MultiAddress(Address):
         self.items = items
 
     def is_valid(self):
-        if len(self.items) == 1 and qtype[self.items[0].rtype] == dnslib.QTYPE.CNAME:
-            return False  # CNAME only fix
-        return any([address.is_valid() for address in self.items])
+        return any([address.is_valid() and utils.validate_ip(address.ip) for address in self.items])
 
     def __iter__(self):
         return iter(self.items)
