@@ -23,8 +23,8 @@ class Address(object):
 
     @property
     def time(self):
-        counter = int(self.ttl - time.time())
-        return counter if counter > 0 else self.ttl
+        timer = self.ttl - time.time()
+        return int(timer if timer > 0 else self.ttl)
 
     def is_valid(self):
         return bool(self.domain and self.ip and self.time > 0)
