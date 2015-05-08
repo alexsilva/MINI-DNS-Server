@@ -19,6 +19,11 @@ from lookup import DNSLookup, DNSRating, DNSLookupException
 import utils
 
 
+# alias
+qtype = dnslib.QTYPE.reverse
+_class = dnslib.CLASS.reverse
+
+
 class DNSQuery(object):
     def __init__(self, data, storage, dnsrating):
         self.storage = storage
@@ -52,12 +57,11 @@ class DNSQuery(object):
                 dnslib.DNSHeader(id=self._record.header.id, qr=1, rd=1, ra=1),
                 q=dnslib.DNSQuestion(self.domain)
             )
-            qtype, cls = dnslib.QTYPE.reverse, dnslib.CLASS.reverse
             for address in self.multiaddr:
                 answer = dnslib.RR(address.domain,
                                    ttl=address.time,
                                    rtype=qtype[address.rtype],
-                                   rclass=cls[address.rclass],
+                                   rclass=_class[address.rclass],
                                    rdata=getattr(dnslib, address.rtype)(address.ip))
                 record.add_answer(answer)
             packs = record.pack()

@@ -1,8 +1,14 @@
 import time
 import re
 
+import dnslib
+
 
 __author__ = 'alex'
+
+# alias
+qtype = dnslib.QTYPE.reverse
+_class = dnslib.CLASS.reverse
 
 
 class Address(object):
@@ -31,6 +37,8 @@ class MultiAddress(Address):
         self.items = items
 
     def is_valid(self):
+        if len(self.items) == 1 and qtype[self.items[0].rtype] == dnslib.QTYPE.CNAME:
+            return False  # CNAME only fix
         return any([address.is_valid() for address in self.items])
 
     def __iter__(self):
