@@ -15,13 +15,14 @@ class Address(object):
 
     @property
     def time(self):
-        return int(self.ttl - time.time())
+        counter = int(self.ttl - time.time())
+        return counter if counter > 0 else self.ttl
 
     def is_valid(self):
         return bool(self.domain and self.ip and self.time > 0)
 
     def __str__(self):
-        return '[{0.ip}] {0.domain} {0.time:.2f}s'.format(self, )
+        return '[{0.ip}] {0.domain} {0.time:.2f}s'.format(self)
 
 
 class MultiAddress(Address):
@@ -61,7 +62,7 @@ class Storage(object):
             cur = self.conn.cursor()
 
             # Create table
-            cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text, ip text, '
+            cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text, ip text PRIMARY KEY, '
                         'rtype text, rclass text, ttl real);')
 
             self.conn.commit()
@@ -88,7 +89,7 @@ class Storage(object):
 
             ttl = time.time() + ttl
 
-            cur.execute('INSERT INTO IP (domain, ip, rtype, rclass, ttl) VALUES (?,?,?,?,?);', (
+            cur.execute('INSERT OR REPLACE INTO IP (domain, ip, rtype, rclass, ttl) VALUES (?,?,?,?,?);', (
                 domain, ip, rtype, rclass, ttl))
 
             self.conn.commit()
