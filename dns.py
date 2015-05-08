@@ -14,7 +14,7 @@ import sqlite3
 
 import dnslib
 
-from storage import Storage, Address
+from storage import Storage, MultiAddress
 from lookup import DNSLookup, DNSRating, DNSLookupException
 import utils
 
@@ -23,43 +23,49 @@ class DNSQuery(object):
     def __init__(self, data, storage, dnsrating):
         self.storage = storage
         self.data = data
-        self.address = Address()
-        self.dnsLookup = DNSLookup(data, dnsrating)
+        self.multiaddr = MultiAddress()
         self._domain = self._record = None
+        self.dnsLookup = DNSLookup(self.domain, data, dnsrating)
 
     @property
     def domain(self):
         if not self._domain:
             self._record = dnslib.DNSRecord.parse(self.data)
-            self._domain = str(self._record.questions[0].qname).rstrip('.')
+            self._domain = str(self._record.questions[0].qname)
         return self._domain
 
     def lookup(self):
-        self.address = self.storage.find(self.domain)
-        if not self.address.is_valid():
+        self.multiaddr = self.storage.find(self.domain)
+        if not self.multiaddr.is_valid():
             try:
-                self.address = self.storage.add(self.domain, self.dnsLookup.ip, self.dnsLookup.ttl)
+                self.multiaddr = self.dnsLookup.multiaddr
+                for address in self.dnsLookup.multiaddr:
+                    self.storage.add(address.domain, address.ip, address.rtype,
+                                     address.rclass, address.ttl)
             except DNSLookupException:
                 pass
-        return self.address
+        return self.multiaddr
 
     def response(self):
         if self.lookup().is_valid():
-            if utils.validate_ip(self.address.ip):
-                answer = dnslib.RR(self.address.domain,
-                                ttl=int(self.address.time),
-                                rdata=dnslib.A(self.address.ip))
-            else:
-                answer = dnslib.RR(self.address.domain,
-                                ttl=int(self.address.time),
-                                rdata=dnslib.NS(self.address.ip))
             record = dnslib.DNSRecord(
                 dnslib.DNSHeader(id=self._record.header.id, qr=1, rd=1, ra=1),
-                q=dnslib.DNSQuestion(self.domain),
-                a=answer)
+                q=dnslib.DNSQuestion(self.domain)
+            )
+            qtype, cls = dnslib.QTYPE.reverse, dnslib.CLASS.reverse
+            for address in self.multiaddr:
+                answer = dnslib.RR(address.domain,
+                                   ttl=address.time,
+                                   rtype=qtype[address.rtype],
+                                   rclass=cls[address.rclass],
+                                   rdata=getattr(dnslib, address.rtype)(address.ip))
+                record.add_answer(answer)
             packs = record.pack()
         else:
-            packs = self.dnsLookup.raw_ip
+            try:
+                packs = self.dnsLookup.record.pack()
+            except DNSLookupException:
+                return b''
         return packs
 
 
@@ -80,15 +86,15 @@ class DNSResolver(Thread):
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
-        print('Response[{0:s}] {1!s}'.format('cached' if query.address.is_valid() else 'no cache',
-                                             query.address))
+        print('Response[{0:s}] {1!s}'.format('cached' if query.multiaddr.is_valid() else 'no cache',
+                                             query.multiaddr))
 
 
 class SharedDB(object):
     """Database for storage ips and dns servers"""
     lock = threading.RLock()
     filename = 'dns_server.sqlite'
-    version = 0
+    version = 1
 
     def __init__(self, filepath=None):
         if os.path.isdir(filepath):

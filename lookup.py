@@ -2,6 +2,7 @@ import socket
 
 import dnslib
 
+from storage import Address, MultiAddress
 
 __author__ = 'alex'
 
@@ -102,41 +103,24 @@ class DNSLookupException(Exception):
 class DNSLookup(object):
     PORT = 53
 
-    def __init__(self, packs, dnsrating):
+    def __init__(self, domain, packs, dnsrating):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.dnsrating = dnsrating
         self.packs = packs
-        self._raw_ip = None
+        self.domain = domain
         self._record = None
 
-    @staticmethod
-    def get_ips(record):
-        data = [str(rr.rdata).strip('.') for rr in record.rr]
-        data.sort()
-        return data
+    @property
+    def multiaddr(self):
+        items = [Address(self.domain, str(rr.rdata), dnslib.QTYPE[rr.rtype],
+                         rclass=dnslib.CLASS[rr.rclass], ttl=rr.ttl)
+                 for rr in self.record.rr]
+        return MultiAddress(items)
 
     @property
     def record(self):
-        if self._record is None:
-            self._record = dnslib.DNSRecord.parse(self.raw_ip)
-        return self._record
-
-    @property
-    def ip(self):
-        return self.get_ips(self.record)[0]  # IP
-
-    @property
-    def ttl(self):
-        return float(self.record.a.ttl)  # TTL
-
-    @property
-    def domain(self):
-        return str(self.record.questions[0].qname).rstrip('.')  # DOMAIN
-
-    @property
-    def raw_ip(self):
-        if self._raw_ip is not None:
-            return self._raw_ip
+        if self._record is not None:
+            return self._record
         index = 1
         while index < len(self.dnsrating):
             best_dns = self.dnsrating.best
@@ -147,18 +131,20 @@ class DNSLookup(object):
             # noinspection PyBroadException
             try:
                 self.sock.sendto(self.packs, (best_dns.ip, self.PORT))
-                self._raw_ip, dns = self.sock.recvfrom(1024)
+                self._record, dns = self.sock.recvfrom(1024)
 
-                assert len(self._raw_ip) > 0
+                assert len(self._record) > 0
 
                 new_rating = best_dns.rating - 0.1
 
                 self.dnsrating.update(best_dns.ip, new_rating if new_rating > 0.0 else 0.0)
 
-                assert any(self.get_ips(dnslib.DNSRecord.parse(self.raw_ip)))
+                self._record = dnslib.DNSRecord.parse(self._record)
 
-                return self._raw_ip
-            except Exception:
+                assert any([str(rr.rdata) for rr in self._record.rr])
+
+                return self._record
+            except Exception as err:
                 self.dnsrating.update(best_dns.ip, best_dns.rating + 0.1)  # bed rate
             index += 1
         raise DNSLookupException('IP not Found!')

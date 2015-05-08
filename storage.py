@@ -6,21 +6,40 @@ __author__ = 'alex'
 
 
 class Address(object):
-    def __init__(self, domain=None, ip=None, expiration=0.0):
+    def __init__(self, domain=None, ip=None, rtype=None, rclass=None, ttl=0.0):
         self.domain = domain
         self.ip = ip
-        self.expiration = expiration
+        self.rtype = rtype
+        self.rclass = rclass
+        self.ttl = ttl
 
     @property
     def time(self):
-        return self.expiration - time.time()
+        return int(self.ttl - time.time())
 
     def is_valid(self):
         return bool(self.domain and self.ip and self.time > 0)
 
     def __str__(self):
-        domain = '-1.-1.-1.-1' if not self.domain else self.domain
-        return '[{0.ip}] {1} {0.time:.2f}s'.format(self, domain)
+        return '[{0.ip}] {0.domain} {0.time:.2f}s'.format(self, )
+
+
+class MultiAddress(Address):
+
+    def __init__(self, items=[]):
+        self.items = items
+
+    def is_valid(self):
+        return any([address.is_valid() for address in self.items])
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __str__(self):
+        return '\n'.join([str(x) for x in self.items])
+
+    def __len__(self):
+        return len(self.items)
 
 
 class Storage(object):
@@ -34,7 +53,7 @@ class Storage(object):
         return getattr(self.db, name)  # db alias
 
     def cleanup(self, cur):
-        cur.execute('DELETE FROM IP WHERE expiration<?;', (time.time(),))
+        cur.execute('DELETE FROM IP WHERE ttl<?;', (time.time(),))
         self.conn.commit()
 
     def _create_tables(self):
@@ -42,7 +61,8 @@ class Storage(object):
             cur = self.conn.cursor()
 
             # Create table
-            cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text PRIMARY KEY, ip text, expiration real);')
+            cur.execute('CREATE TABLE IF NOT EXISTS IP (domain text, ip text, '
+                        'rtype text, rclass text, ttl real);')
 
             self.conn.commit()
             cur.close()
@@ -52,14 +72,13 @@ class Storage(object):
             cur = self.conn.cursor()
             self.cleanup(cur)
 
-            cur.execute('SELECT * FROM IP WHERE domain=? AND expiration>?;', (domain, time.time()))
+            cur.execute('SELECT * FROM IP WHERE domain=? AND ttl>?;', (domain, time.time()))
+            multiaddr = MultiAddress([Address(*(args or ())) for args in cur.fetchall()])
 
-            args = cur.fetchone()
             cur.close()
+        return multiaddr
 
-        return Address(*(args or ()))
-
-    def add(self, domain, ip, expiration):
+    def add(self, domain, ip, rtype, rclass, ttl):
         for pattern in self.skip_ip_patterns:
             if pattern.match(ip):
                 return Address()
@@ -67,10 +86,12 @@ class Storage(object):
             cur = self.conn.cursor()
             self.cleanup(cur)
 
-            expiration = time.time() + expiration  # future
-            cur.execute('INSERT OR REPLACE INTO IP (domain, ip, expiration) VALUES (?,?,?);', (domain, ip, expiration))
+            ttl = time.time() + ttl
+
+            cur.execute('INSERT INTO IP (domain, ip, rtype, rclass, ttl) VALUES (?,?,?,?,?);', (
+                domain, ip, rtype, rclass, ttl))
 
             self.conn.commit()
             cur.close()
 
-            return Address(domain, ip, expiration)
+            return Address(domain, ip, rtype, rclass, ttl)
