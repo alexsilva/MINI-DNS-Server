@@ -8,3 +8,24 @@ When a server responds correctly, your rating is close to zero and this causes i
 Not always a dns server responds correctly, it causes another to be used in place of what was best.
 
 Works on Python 3.2+
+
+Installing
+==========
+
+* Clone the repository
+* Install the requirements::
+
+    pip install -r requirements.txt
+
+* Install the library::
+
+    python setup.py install
+
+Running
+=======
+
+The server can be started with the mdns.py script. For example::
+
+    mdns.py --detach
+
+
