@@ -13,9 +13,9 @@ from threading import Thread
 
 import dnslib
 
-import utils
-from lookup import DNSLookup, DNSRating, DNSLookupException
-from storage import Storage, MultiAddress
+import mindns.utils as utils
+from mindns.lookup import DNSLookup, DNSRating, DNSLookupException
+from mindns.storage import Storage, MultiAddress
 
 # alias
 qtype = dnslib.QTYPE.reverse

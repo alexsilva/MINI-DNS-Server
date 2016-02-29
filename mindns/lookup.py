@@ -2,7 +2,7 @@ import socket
 
 import dnslib
 
-from storage import Address, MultiAddress
+from mindns.storage import Address, MultiAddress
 
 __author__ = 'alex'
 

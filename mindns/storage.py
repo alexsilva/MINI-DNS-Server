@@ -3,7 +3,7 @@ import time
 
 import dnslib
 
-import utils
+import mindns.utils
 
 __author__ = 'alex'
 
