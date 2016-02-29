@@ -1,10 +1,9 @@
-import time
 import re
+import time
 
 import dnslib
 
 import utils
-
 
 __author__ = 'alex'
 
