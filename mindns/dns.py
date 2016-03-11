@@ -43,8 +43,11 @@ class DNSQuery(object):
             try:
                 self.multiaddr = self.dnsLookup.multiaddr
                 for address in self.dnsLookup.multiaddr:
-                    self.storage.add(address.domain, address.ip, address.rtype,
-                                     address.rclass, address.ttl)
+                    self.storage.add(address.domain.strip("."),
+                                     address.ip.strip("."),
+                                     address.rtype,
+                                     address.rclass,
+                                     address.ttl)
             except DNSLookupException:
                 pass
         return self.multiaddr
