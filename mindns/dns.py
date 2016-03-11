@@ -99,7 +99,7 @@ class SharedDB(object):
     """Database for storage ips and dns servers"""
     lock = threading.RLock()
     filename = 'dns_server.sqlite'
-    version = 1
+    version = 2
 
     def __init__(self, filepath=None):
         if os.path.isdir(filepath):

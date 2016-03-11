@@ -32,25 +32,25 @@ class DNS(object):
 
 class DNSRating(object):
     """ benchmark of dns """
-    DNS = [
-        '8.8.8.8', '8.8.4.4',  # Google2
-        '209.244.0.3', '209.244.0.4',  # Level31
-        '84.200.69.80', '84.200.70.40',  # DNS.WATCH3
-        '8.26.56.26', '8.20.247.20',  # Comodo Secure DNS
-        '208.67.222.222', '208.67.220.220',  # OpenDNS Home4
-        '156.154.70.1', '156.154.71.1',  # DNS Advantage
-        '199.85.126.10', '199.85.127.10',  # Norton ConnectSafe5
-        '81.218.119.11', '209.88.198.133',  # GreenTeamDNS6
-        '195.46.39.39', '195.46.39.40',  # SafeDNS7
-        '216.87.84.211', '208.115.243.35',  # OpenNIC8
-        '199.5.157.131', '208.71.35.137',  # Public-Root9
-        '208.76.50.50', '208.76.51.51',  # SmartViper
-        '216.146.35.35', '216.146.36.36',  # Dyn
-        '37.235.1.174', '37.235.1.177',  # FreeDNS10
-        '89.233.43.71', '91.239.100.100',  # censurfridns.dk11
-        '74.82.42.42',  # Hurricane Electric12
-        '109.69.8.51'  # puntCAT13
-    ]
+    ip_list = {
+        'Google2': ('8.8.8.8', '8.8.4.4'),
+        'Level31': ('209.244.0.3', '209.244.0.4'),
+        'DNS.WATCH3': ('84.200.69.80', '84.200.70.40'),
+        'Comodo Secure DNS': ('8.26.56.26', '8.20.247.20'),
+        'OpenDNS Home4': ('208.67.222.222', '208.67.220.220'),
+        'DNS Advantage': ('156.154.70.1', '156.154.71.1'),
+        'Norton ConnectSafe5': ('199.85.126.10', '199.85.127.10'),
+        'GreenTeamDNS6': ('81.218.119.11', '209.88.198.133'),
+        'SafeDNS7': ('195.46.39.39', '195.46.39.40'),
+        'OpenNIC8': ('216.87.84.211', '208.115.243.35'),
+        'Public-Root9': ('199.5.157.131', '208.71.35.137'),
+        'SmartViper': ('208.76.50.50', '208.76.51.51'),
+        'Dyn': ('216.146.35.35', '216.146.36.36'),
+        'FreeDNS10': ('37.235.1.174', '37.235.1.177'),
+        'censurfridns.dk11': ('89.233.43.71', '91.239.100.100'),
+        'Hurricane Electric12': ('74.82.42.42',),
+        'puntCAT13': ('109.69.8.51',)
+    }
 
     def __init__(self, db):
         self.db = db
@@ -64,12 +64,12 @@ class DNSRating(object):
             cur = self.conn.cursor()
 
             # Create table
-            cur.execute("CREATE TABLE IF NOT EXISTS DNS (ip text, rating real);")
+            cur.execute("CREATE TABLE IF NOT EXISTS DNS (name text, ip text, rating real);")
 
             if not bool(self.best):  # empty
-                for ip in self.DNS:
-                    cur.execute("INSERT INTO DNS (ip, rating) VALUES(?, ?)", (ip, 0.0))
-
+                for name in self.ip_list:
+                    for ip in self.ip_list[name]:
+                        cur.execute("INSERT INTO DNS (name, ip, rating) VALUES(?, ?, ?)", (name, ip, 0.0))
             self.conn.commit()
             cur.close()
 
@@ -93,7 +93,7 @@ class DNSRating(object):
             cur.close()
 
     def __len__(self):
-        return len(self.DNS)
+        return len(self.ip_list)
 
 
 class DNSLookupException(Exception):
