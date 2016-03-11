@@ -4,11 +4,14 @@ Reference:
 Edited:
     Alex Sandro
 """
+import logging
 import os
 import select
 import socket
 import sqlite3
+import sys
 import threading
+from logging.handlers import RotatingFileHandler
 from threading import Thread
 
 import dnslib
@@ -85,14 +88,15 @@ class DNSResolver(Thread):
         return getattr(self.server, item)
 
     def run(self):
-        print("Request: {0!s}".format(':'.join([str(i) for i in self.addr])))
+        self.logger.info("Request from {0:s}".format(':'.join([str(n) for n in self.addr])))
         try:
             query = DNSQuery(self.data, self.storage, self.dnsrating)
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
-        print('Response[{0:s}] {1!s}'.format('cached' if query.multiaddr.is_valid() else 'no cache',
-                                             query.multiaddr))
+        self.logger.info('Client response[{0:s}] {1!s}'.format(
+            'cached' if query.multiaddr.is_valid() else 'no cache',
+            query.multiaddr))
 
 
 class SharedDB(object):
@@ -119,11 +123,29 @@ class DNSServer(object):
         self.loc = loc
         self.port = port
 
+        log_stdout = kwargs.pop('log_stdout', True)
+        log_filepath = kwargs.pop('log_stdout', "mindns.log")
+
         self.shared_db = SharedDB(kwargs.pop('db_filepath'))
         self.storage = Storage(self.shared_db, skip_ip_patterns=kwargs.pop('skip_ip_patterns', []))
         self.dnsrating = DNSRating(self.shared_db)
 
         self.udps = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        # LOGGER
+        self.logger = self._get_logger(log_stdout, log_filepath)
+
+    def _get_logger(self, log_stdout, log_filepath):
+        """Configuration of logger"""
+        logger = logging.getLogger("%s:%d" % (self.loc, self.port))
+        if log_stdout:
+            handler = logging.StreamHandler(sys.stdout)
+        else:
+            handler = RotatingFileHandler(log_filepath)
+        handler.setLevel(logging.DEBUG)
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        return logger
 
     def __getattr__(self, item):
         return getattr(self.udps, item)
@@ -140,10 +162,10 @@ class DNSServer(object):
             except KeyboardInterrupt:
                 break
             except Exception as err:
-                print(err)
+                self.logger.error("Client request {0!s}".format(err))
                 continue  # closed by client
         self.udps.close()
-        print('Server stopped...')
+        self.logger.info('Server stopped...')
 
     def __str__(self):
         return '{self.loc}:{self.port}'.format(self=self)

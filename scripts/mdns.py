@@ -2,10 +2,10 @@
 
 from __future__ import print_function
 
-import os
-import sys
-import socket
 import argparse
+import os
+import socket
+import sys
 
 from mindns.dns import SharedDB, DNSServer
 
@@ -77,6 +77,17 @@ def main():
                         help='Ip address of the server (default 127.0.0.1).')
     parser.add_argument('--port', default=53, type=int,
                         help='Sets communication port dns server (default 53).')
+
+    logstdout_parser = parser.add_mutually_exclusive_group(required=False)
+    logstdout_parser.add_argument('--log-stdout', dest='log_stdout', action='store_true',
+                        help='Prints messages to standard output (stdout).')
+    logstdout_parser.add_argument('--no-log-stdout', dest='log_stdout', action='store_false',
+                        help='Redirect messages to the log file.')
+    parser.set_defaults(log_stdout=True)
+
+    parser.add_argument('--log-filepath', default="mindns.log", type=str, dest='log_filepath',
+                        help='Sets the path for the logger file (if --log-stdout = False)'),
+
     parser.add_argument('--db-filepath', default=SharedDB.filename, type=str,
                         dest='db_filepath',
                         help='Defines the location of the given database file '
@@ -95,8 +106,10 @@ def main():
     socket.setdefaulttimeout(args.socket_timeout)
     server = DNSServer(loc=args.loc, port=args.port,
                        db_filepath=args.db_filepath,
-                       skip_ip_patterns=args.skip_ip_patterns)
-    print('MINI - DNS Server, Listen at: {0!s}'.format(server))
+                       skip_ip_patterns=args.skip_ip_patterns,
+                       log_stdout=args.log_stdout,
+                       log_filepath=args.log_filepath)
+    server.logger.info('MINI - DNS Server, Listen at: {0!s}'.format(server))
     if args.detach:
         detach(pidfile=args.pidfile)
     try:
