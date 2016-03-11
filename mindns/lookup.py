@@ -1,4 +1,5 @@
 import socket
+import time
 
 import dnslib
 
@@ -130,14 +131,14 @@ class DNSLookup(object):
 
             # noinspection PyBroadException
             try:
+                before = time.time()
                 self.sock.sendto(self.packs, (best_dns.ip, self.PORT))
                 self._record, dns = self.sock.recvfrom(1024)
+                after = time.time()
 
                 assert len(self._record) > 0
 
-                new_rating = best_dns.rating - 0.1
-
-                self.dnsrating.update(best_dns.ip, new_rating if new_rating > 0.0 else 0.0)
+                self.dnsrating.update(best_dns.ip, (after - before))
 
                 self._record = dnslib.DNSRecord.parse(self._record)
 
