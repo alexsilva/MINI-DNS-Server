@@ -34,7 +34,7 @@ class DNSQuery(object):
     def domain(self):
         if not self._domain:
             self._record = dnslib.DNSRecord.parse(self.data)
-            self._domain = str(self._record.questions[0].qname)
+            self._domain = str(self._record.questions[0].qname).strip(".")
         return self._domain
 
     def lookup(self):
