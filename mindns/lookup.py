@@ -113,9 +113,15 @@ class DNSLookup(object):
 
     @property
     def multiaddr(self):
-        items = [Address(self.domain, str(rr.rdata), dnslib.QTYPE[rr.rtype],
-                         rclass=dnslib.CLASS[rr.rclass], ttl=rr.ttl)
-                 for rr in self.record.rr]
+        items = []
+        for rr in self.record.rr:
+            addr = Address(
+                self.domain.strip("."),
+                str(rr.rdata).strip("."),
+                dnslib.QTYPE[rr.rtype],
+                rclass=dnslib.CLASS[rr.rclass],
+                ttl=rr.ttl)
+            items.append(addr)
         return MultiAddress(items)
 
     @property
