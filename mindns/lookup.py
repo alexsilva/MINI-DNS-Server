@@ -116,9 +116,9 @@ class DNSLookup(object):
         items = []
         for rr in self.record.rr:
             addr = Address(
-                self.domain.strip("."),
-                str(rr.rdata).strip("."),
-                dnslib.QTYPE[rr.rtype],
+                domain=self.domain.strip("."),
+                ip=str(rr.rdata).strip("."),
+                rtype=dnslib.QTYPE[rr.rtype],
                 rclass=dnslib.CLASS[rr.rclass],
                 ttl=rr.ttl)
             items.append(addr)
