@@ -13,16 +13,23 @@ class DNS(object):
         self.args = args
 
     @property
-    def ip(self):
+    def name(self):
         try:
             return self.args[0]
+        except IndexError:
+            return ''
+
+    @property
+    def ip(self):
+        try:
+            return self.args[1]
         except IndexError:
             return None
 
     @property
     def rating(self):
         try:
-            return self.args[1]
+            return self.args[2]
         except IndexError:
             return 0.0
 
@@ -79,7 +86,7 @@ class DNSRating(object):
             cur = self.conn.cursor()
 
             # Create table
-            cur.execute("SELECT ip,rating FROM DNS ORDER BY rating ASC LIMIT 2;")
+            cur.execute("SELECT name,ip,rating FROM DNS ORDER BY rating ASC LIMIT 2;")
             items = cur.fetchone()
 
             cur.close()
@@ -110,6 +117,7 @@ class DNSLookup(object):
         self.packs = packs
         self.domain = domain
         self._record = None
+        self.bdns = None
 
     @property
     def multiaddr(self):
@@ -120,7 +128,10 @@ class DNSLookup(object):
                 ip=str(rr.rdata).strip("."),
                 rtype=dnslib.QTYPE[rr.rtype],
                 rclass=dnslib.CLASS[rr.rclass],
-                ttl=rr.ttl)
+                ttl=rr.ttl,
+                counter=time.time() + rr.ttl,
+                dns_name=self.bdns.name
+            )
             items.append(addr)
         return MultiAddress(items)
 
@@ -130,21 +141,21 @@ class DNSLookup(object):
             return self._record
         index = 1
         while index < len(self.dnsrating):
-            best_dns = self.dnsrating.best
+            self.bdns = self.dnsrating.best
 
-            if not bool(best_dns):
+            if not bool(self.bdns):
                 continue
 
             # noinspection PyBroadException
             try:
                 before = time.time()
-                self.sock.sendto(self.packs, (best_dns.ip, self.PORT))
+                self.sock.sendto(self.packs, (self.bdns.ip, self.PORT))
                 self._record, dns = self.sock.recvfrom(1024)
                 after = time.time()
 
                 assert len(self._record) > 0
 
-                self.dnsrating.update(best_dns.ip, (after - before))
+                self.dnsrating.update(self.bdns.ip, (after - before))
 
                 self._record = dnslib.DNSRecord.parse(self._record)
 
@@ -152,6 +163,6 @@ class DNSLookup(object):
 
                 return self._record
             except Exception as err:
-                self.dnsrating.update(best_dns.ip, best_dns.rating + 0.1)  # bed rate
+                self.dnsrating.update(self.bdns.ip, self.bdns.rating + 0.1)  # bed rate
             index += 1
         raise DNSLookupException('IP not Found!')

@@ -50,7 +50,8 @@ class DNSQuery(object):
                                      address.ip,
                                      address.rtype,
                                      address.rclass,
-                                     address.ttl)
+                                     address.ttl,
+                                     self.dnsLookup.bdns)
             except DNSLookupException:
                 pass
         return self.multiaddr
@@ -63,7 +64,7 @@ class DNSQuery(object):
             )
             for address in self.multiaddr:
                 answer = dnslib.RR(address.domain,
-                                   ttl=address.time,
+                                   ttl=address.ttl_now,
                                    rtype=qtype[address.rtype],
                                    rclass=_class[address.rclass],
                                    rdata=getattr(dnslib, address.rtype)(address.ip))
@@ -94,7 +95,7 @@ class DNSResolver(Thread):
             self.server.sendto(query.response(), self.addr)
         except OSError:
             return  # closed by client
-        self.logger.info('Client response[{0:s}] {1!s}'.format(
+        self.logger.info('Client response[{0:s}]\n{1!s}'.format(
             'cached' if query.multiaddr.is_valid() else 'no cache',
             query.multiaddr))
 
@@ -103,7 +104,7 @@ class SharedDB(object):
     """Database for storage ips and dns servers"""
     lock = threading.RLock()
     filename = 'dns_server.sqlite'
-    version = 2
+    version = 3
 
     def __init__(self, filepath=None):
         if os.path.isdir(filepath):
