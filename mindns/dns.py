@@ -89,7 +89,7 @@ class DNSResolver(Thread):
         return getattr(self.server, item)
 
     def run(self):
-        self.logger.info("Request from {0:s}".format(':'.join([str(n) for n in self.addr])))
+        self.logger.info("Request from {0.addr[0]}:{0.addr[1]}".format(self))
         try:
             query = DNSQuery(self.data, self.storage, self.dnsrating)
             self.server.sendto(query.response(), self.addr)
