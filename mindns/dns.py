@@ -88,14 +88,16 @@ class DNSResolver(Thread):
     def __getattr__(self, item):
         return getattr(self.server, item)
 
+    def __str__(self):
+        return "{0.addr[0]}:{0.addr[1]}".format(self)
+
     def run(self):
-        self.logger.info("Request from {0.addr[0]}:{0.addr[1]}".format(self))
-        try:
-            query = DNSQuery(self.data, self.storage, self.dnsrating)
-            self.server.sendto(query.response(), self.addr)
-        except OSError:
-            return  # closed by client
-        self.logger.info('Client response[{0:s}]\n{1!s}'.format(
+        self.logger.info("Request from {0!s}".format(self))
+
+        query = DNSQuery(self.data, self.storage, self.dnsrating)
+        self.server.sendto(query.response(), self.addr)
+
+        self.logger.info('Client({0!s}) response[{1:s}]\n{2!s}'.format(self,
             'cached' if query.multiaddr.is_valid() else 'no cache',
             query.multiaddr))
 
@@ -157,14 +159,19 @@ class DNSServer(object):
             # noinspection PyBroadException
             try:
                 rlist, wlist, xlist = select.select([self.udps], [], [], timeout)
-                if rlist:
-                    dns = DNSResolver(self, *rlist[0].recvfrom(1024))
-                    dns.start()
+                data, addr = rlist[0].recvfrom(1024)
+            except (ConnectionResetError, IndexError):
+                continue
             except KeyboardInterrupt:
                 break
             except Exception as err:
-                self.logger.error("Client request {0!s}".format(err))
-                continue  # closed by client
+                self.logger.error("Server error {0!s}".format(err))
+                continue
+            try:
+                dns = DNSResolver(self, data, addr)
+                dns.start()
+            except Exception as err:
+                self.logger.error("Client error {0!s}".format(err))
         self.udps.close()
         self.logger.info('Server stopped...')
 
